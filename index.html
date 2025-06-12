@@ -27,7 +27,7 @@
             width: 80vw;
             max-width: 400px;
             min-width: 280px;
-            padding: 25px 30px 60px;
+            padding: 15px 30px 60px;
             border-radius: 12px;
             box-shadow: 0 0 15px #a0a9bfbf;
             overflow-y: auto;
@@ -37,9 +37,17 @@
 
         h1 {
             text-align: center;
-            margin-bottom: 25px;
-            font-weight: 700;
-            color: #000000;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            font-weight: 900;
+            font-size: 28px;
+            color: #fff200;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            font-family: "宋体", "SimSun", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         }
 
         label {
@@ -123,12 +131,11 @@
             font-family: "宋体", "SimSun", serif;
         }
     </style>
-
 </head>
 
 <body>
     <div class="calculator">
-        <h1> 币本位开仓</h1>
+        <h1>币本位开仓</h1>
 
         <label for="positionType">仓位方向</label>
         <select id="positionType" onchange="updatePositionStyle()">
@@ -137,19 +144,19 @@
         </select>
 
         <label for="entryPrice">开仓价格 (USD)</label>
-        <input type="number" id="entryPrice"  min="0" step="any" />
+        <input type="number" id="entryPrice" min="0" step="any" />
 
         <label for="latestPrice">平仓价格 (USD)</label>
-        <input type="number" id="latestPrice"  min="0" step="any" />
+        <input type="number" id="latestPrice" min="0" step="any" />
 
-        <label for="pnlAmount">盈亏数目 (ADA)</label> 
-        <input type="number" id="pnlAmount"  step="any" />
+        <label for="pnlAmount">盈亏数目 (ADA)</label>
+        <input type="number" id="pnlAmount" step="any" />
 
         <label for="contractSize">合约面值 (USD)</label>
         <input type="number" id="contractSize" min="0" step="any" value="10" />
 
         <label for="contracts">合约张数</label>
-        <input type="number" id="contracts"  min="0" step="any" />
+        <input type="number" id="contracts" min="0" step="any" />
 
         <button onclick="calculatePnL()">计算盈亏/张数</button>
 
@@ -205,7 +212,7 @@
                     alert("计算得到的合约张数为负数，请检查输入参数。");
                     return;
                 }
-                contractsInput.value = Math.round(contracts);  // 四舍五入取整数
+                contractsInput.value = Math.round(contracts);
                 contractsInput.classList.add('result-value', 'yellow-bg');
                 return;
             }
@@ -224,7 +231,6 @@
             pnlAmountInput.classList.add(pnl >= 0 ? 'green-text' : 'red-text');
         }
 
-        // 初始化样式
         updatePositionStyle();
     </script>
 </body>
