@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>合约盈亏计算器</title>
+    <title>币本位盈亏计算器</title>
     <style>
         html,
         body {
@@ -12,9 +12,9 @@
             padding: 0;
             height: 100vh;
             overflow: hidden;
-            font-family: "宋体", "SimSun", "Segoe UI", sans-serif;
+            font-family: "宋体", "SimSun", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
             background: #f5f7fa;
-            color: #000;
+            color: #000000;
         }
 
         body {
@@ -23,7 +23,7 @@
         }
 
         .calculator {
-            background: #fff;
+            background: #ffffff;
             width: 80vw;
             max-width: 400px;
             min-width: 280px;
@@ -39,11 +39,7 @@
             text-align: center;
             margin-bottom: 25px;
             font-weight: 700;
-        }
-
-        h1::before {
-            content: "₿ ";
-            font-size: 1.2em;
+            color: #000000;
         }
 
         label {
@@ -51,6 +47,7 @@
             margin-bottom: 6px;
             margin-top: 15px;
             font-weight: 600;
+            color: #000000;
             font-family: "宋体", "SimSun", serif;
         }
 
@@ -61,16 +58,20 @@
             border-radius: 6px;
             border: 1.5px solid #b2d8b2;
             font-size: 16px;
-            font-family: "Times New Roman", Times, serif;
             background: #fefefe;
-            color: #000;
+            color: #000000;
             box-sizing: border-box;
-            transition: border 0.3s ease;
+            transition: border-color 0.3s ease, color 0.3s ease;
+            font-family: "Times New Roman", Times, serif;
         }
 
         input:focus,
         select:focus {
             outline: none;
+        }
+
+        .result-value {
+            font-weight: 700;
         }
 
         button {
@@ -85,6 +86,7 @@
             font-weight: 700;
             cursor: pointer;
             box-shadow: 0 0 10px #2e8b5777;
+            transition: background-color 0.3s ease;
         }
 
         button:hover {
@@ -117,105 +119,113 @@
             border-color: #d00000 !important;
         }
 
-        .selected {
-            border-color: #000 !important;
-        }
-
         select {
             font-family: "宋体", "SimSun", serif;
         }
     </style>
+
 </head>
 
 <body>
     <div class="calculator">
-        <h1>合约盈亏计算器</h1>
+        <h1>₿ 币本位盈亏计算器</h1>
 
-        <label for="direction">仓位方向</label>
-        <select id="direction">
+        <label for="positionType">仓位方向</label>
+        <select id="positionType" onchange="updatePositionStyle()">
             <option value="long">多头</option>
             <option value="short">空头</option>
         </select>
 
-        <label for="entry">开仓价格</label>
-        <input type="number" id="entry" />
+        <label for="entryPrice">开仓价格 (USD)</label>
+        <input type="number" id="entryPrice"  min="0" step="any" />
 
-        <label for="exit">平仓价格</label>
-        <input type="number" id="exit" />
+        <label for="latestPrice">平仓价格 (USD)</label>
+        <input type="number" id="latestPrice"  min="0" step="any" />
 
-        <label for="margin">保证金（USDT）</label>
-        <input type="number" id="margin" />
+        <label for="pnlAmount">盈亏数目 (ADA)</label> 
+        <input type="number" id="pnlAmount"  step="any" />
 
-        <label for="leverage">杠杆倍数</label>
-        <input type="number" id="leverage" />
+        <label for="contractSize">合约面值 (USD)</label>
+        <input type="number" id="contractSize" min="0" step="any" value="10" />
 
-        <button onclick="calculate()">计算盈亏</button>
+        <label for="contracts">合约张数</label>
+        <input type="number" id="contracts"  min="0" step="any" />
 
-        <div id="result">
-            <p><strong>盈亏:</strong> <span id="pnl" class="result-value"></span></p>
-            <p><strong>张数:</strong> <span id="lots" class="result-value"></span></p>
-        </div>
+        <button onclick="calculatePnL()">计算盈亏/张数</button>
+
+        <div id="result"></div>
     </div>
 
     <script>
-        const directionEl = document.getElementById("direction");
-        const inputs = document.querySelectorAll("input, select");
-        const result = document.getElementById("result");
-        const pnlEl = document.getElementById("pnl");
-        const lotsEl = document.getElementById("lots");
+        const positionSelect = document.getElementById("positionType");
 
-        directionEl.addEventListener("change", () => {
-            updateDirectionStyle();
-        });
+        function clearResultStyles() {
+            const contractsInput = document.getElementById('contracts');
+            const pnlAmountInput = document.getElementById('pnlAmount');
+            contractsInput.classList.remove('result-value', 'yellow-bg');
+            pnlAmountInput.classList.remove('result-value', 'green-text', 'red-text');
+        }
 
-        inputs.forEach(el => {
-            el.addEventListener("focus", () => {
-                if (el !== directionEl) {
-                    el.classList.add("selected");
-                }
-            });
-            el.addEventListener("blur", () => {
-                el.classList.remove("selected");
-            });
-        });
-
-        function updateDirectionStyle() {
-            const dir = directionEl.value;
-            directionEl.classList.remove("position-long", "position-short");
-            if (dir === "long") {
-                directionEl.classList.add("position-long");
+        function updatePositionStyle() {
+            const select = document.getElementById('positionType');
+            if (select.value === 'long') {
+                select.classList.remove('position-short');
+                select.classList.add('position-long');
             } else {
-                directionEl.classList.add("position-short");
+                select.classList.remove('position-long');
+                select.classList.add('position-short');
             }
         }
 
-        function calculate() {
-            const direction = directionEl.value;
-            const entry = parseFloat(document.getElementById("entry").value);
-            const exit = parseFloat(document.getElementById("exit").value);
-            const margin = parseFloat(document.getElementById("margin").value);
-            const leverage = parseFloat(document.getElementById("leverage").value);
+        function calculatePnL() {
+            clearResultStyles();
+            const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+            const latestPrice = parseFloat(document.getElementById('latestPrice').value);
+            const contractsInput = document.getElementById('contracts');
+            const pnlAmountInput = document.getElementById('pnlAmount');
+            const contractSize = parseFloat(document.getElementById('contractSize').value);
+            const positionType = document.getElementById('positionType').value;
 
-            if (isNaN(entry) || isNaN(exit) || isNaN(margin) || isNaN(leverage) || leverage <= 0) {
-                alert("请输入有效数字");
+            if (!entryPrice || entryPrice <= 0 || !latestPrice || latestPrice <= 0 || !contractSize || contractSize <= 0) {
+                alert("请填写所有有效数字（开仓价、平仓价、合约面值）！");
                 return;
             }
 
-            const positionValue = margin * leverage;
-            const priceDiff = direction === "long" ? exit - entry : entry - exit;
-            const pnl = priceDiff * positionValue / entry;
-            const lots = Math.round(positionValue / entry);
+            const usdPositionSign = positionType === 'long' ? 1 : -1;
+            const pnlAmount = parseFloat(pnlAmountInput.value);
 
-            pnlEl.textContent = pnl.toFixed(4);
-            pnlEl.className = `result-value ${pnl >= 0 ? "green-text" : "red-text"}`;
+            if (pnlAmountInput.value !== "" && !isNaN(pnlAmount)) {
+                const denominator = (1 / entryPrice - 1 / latestPrice) * contractSize * usdPositionSign;
+                if (denominator === 0) {
+                    alert("平仓价格和开仓价格导致除零错误，无法计算。");
+                    return;
+                }
+                const contracts = pnlAmount / denominator;
+                if (contracts < 0) {
+                    alert("计算得到的合约张数为负数，请检查输入参数。");
+                    return;
+                }
+                contractsInput.value = Math.round(contracts);  // 四舍五入取整数
+                contractsInput.classList.add('result-value', 'yellow-bg');
+                return;
+            }
 
-            lotsEl.textContent = lots;
-            lotsEl.classList.add("yellow-bg");
+            const contracts = parseFloat(contractsInput.value);
+            if (!contracts || contracts <= 0) {
+                alert("请填写有效的合约张数或盈亏数目！");
+                return;
+            }
 
-            result.style.display = "block";
+            const usdPosition = contracts * contractSize * usdPositionSign;
+            const pnl = (1 / entryPrice - 1 / latestPrice) * usdPosition;
+
+            pnlAmountInput.value = pnl.toFixed(4);
+            pnlAmountInput.classList.add('result-value');
+            pnlAmountInput.classList.add(pnl >= 0 ? 'green-text' : 'red-text');
         }
 
-        updateDirectionStyle();
+        // 初始化样式
+        updatePositionStyle();
     </script>
 </body>
 
