@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>币本位仓位计算器</title>
+  <style>
+    body {
+      font-family: Times New Roman, serif;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 390px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      font-size: 17px;
+      font-family: Times New Roman, serif;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 18px;
+      font-family: Times New Roman, serif;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      text-align: center;
+      font-family: Times New Roman, serif;
+    }
+    .red {
+      color: red;
+    }
+    .blue {
+      color: blue;
+    }
+    .green {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>币本位仓位计算器</h2>
+    <label for="entryPrice">开仓价（USDT）</label>
+    <input type="number" id="entryPrice" step="0.0001">
+
+    <label for="stopLossPrice">止损价（USDT）</label>
+    <input type="number" id="stopLossPrice" step="0.0001">
+
+    <label for="maxLossADA">最大亏损（ADA）</label>
+    <input type="number" id="maxLossADA" step="0.1">
+
+    <label for="rewardRiskRatio">盈亏比倍数（以幅度计）</label>
+    <input type="number" id="rewardRiskRatio" step="0.1">
+
+    <label for="feeType">手续费类型</label>
+    <select id="feeType">
+      <option value="0.0007">开：Maker 0.02% + 平：Taker 0.05% = 0.07%</option>
+      <option value="0.0004">开：Maker 0.02% + 平：Maker 0.02% = 0.04%</option>
+      <option value="0.0010">开：Taker 0.05% + 平：Taker 0.05% = 0.10%</option>
+    </select>
+
+    <label for="fundingCycles">资金费率周期数（可选）</label>
+    <input type="number" id="fundingCycles" step="1">
+
+    <button onclick="calculatePosition()">计算仓位</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    function calculatePosition() {
+      const entry = parseFloat(document.getElementById('entryPrice').value);
+      const stop = parseFloat(document.getElementById('stopLossPrice').value);
+      const maxLossADA = parseFloat(document.getElementById('maxLossADA').value);
+      const feeRate = parseFloat(document.getElementById('feeType').value);
+      const rrRatio = parseFloat(document.getElementById('rewardRiskRatio').value);
+      const fundingCycles = parseFloat(document.getElementById('fundingCycles').value);
+
+      const delta = Math.abs(entry - stop);
+
+      if (!entry || !stop || !maxLossADA || !rrRatio || delta === 0) {
+        document.getElementById('result').innerText = '请填写所有输入项，且价格不能相同';
+        return;
+      }
+
+      const priceChangePercent = delta / entry;
+      const positionADA = maxLossADA / (priceChangePercent + feeRate);
+      const positionUSDT = positionADA * entry;
+      const positionLots = Math.floor(positionUSDT / 10);
+
+      const takeProfitChange = priceChangePercent * rrRatio;
+      let takeProfitPrice = entry > stop
+        ? entry + takeProfitChange * entry
+        : entry - takeProfitChange * entry;
+
+      const profitUSDT = (takeProfitPrice - entry) * positionADA;
+      const profitADA = profitUSDT / takeProfitPrice;
+
+      const priceChangeToTP = ((takeProfitPrice - entry) / entry * 100).toFixed(2);
+
+      let fundingText = '';
+      if (!isNaN(fundingCycles) && fundingCycles > 0) {
+        const fundingRatePerCycle = 0.0001; // 0.01%
+        const totalRate = feeRate + (fundingRatePerCycle * fundingCycles);
+        const positionADAWithFunding = maxLossADA / (priceChangePercent + totalRate);
+        const positionUSDTWithFunding = positionADAWithFunding * entry;
+        const positionLotsWithFunding = Math.floor(positionUSDTWithFunding / 10);
+
+        fundingText = `<br><span class="blue">➡ 考虑资金费率后张数：<b>${positionLotsWithFunding}</b> 张</span>`;
+      }
+
+      document.getElementById('result').innerHTML =
+        `建议开仓：<br>` +
+        `➡ ADA 数量：<b>${positionADA.toFixed(2)} ADA</b><br>` +
+        `➡ 合约名义价值：<b>${positionUSDT.toFixed(2)} USDT</b><br>` +
+        `➡ 张数（1 张 = 10 USDT）：<b class="red">${positionLots}</b> 张<br>` +
+        `➡ 止盈价格：<b style="background-color: yellow">${takeProfitPrice.toFixed(4)} USDT</b>，盈利数量：${profitADA.toFixed(2)} ADA<br>` +
+        `➡ <span class="green">上涨/下降幅度：${priceChangeToTP}%</span><br>` +
+        fundingText;
+    }
+  </script>
+</body>
+</html>
