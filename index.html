@@ -132,19 +132,19 @@
         </select>
 
         <label for="entryPrice">开仓价格 (USD)</label>
-        <input type="number" id="entryPrice" placeholder="例：50000" min="0" step="any" />
+        <input type="number" id="entryPrice"  min="0" step="any" />
 
         <label for="latestPrice">平仓价格 (USD)</label>
-        <input type="number" id="latestPrice" placeholder="例：55000" min="0" step="any" />
+        <input type="number" id="latestPrice" min="0" step="any" />
 
         <label for="contractSize">合约面值 (每张 USD)</label>
-        <input type="number" id="contractSize" placeholder="通常为100" min="0" step="any" value="100" />
+        <input type="number" id="contractSize"  min="0" step="any" value="10" />
 
-        <label for="pnlAmount">盈亏数目 (BTC)</label>
-        <input type="number" id="pnlAmount" placeholder="例：0.05" step="any" />
+        <label for="pnlAmount">盈亏数目 (个币)</label>
+        <input type="number" id="pnlAmount"  step="any" />
 
         <label for="contracts">合约张数</label>
-        <input type="number" id="contracts" placeholder="例：100" min="0" step="any" />
+        <input type="number" id="contracts"  min="0" step="any" />
 
         <button onclick="calculatePnL()">计算盈亏/张数</button>
 
