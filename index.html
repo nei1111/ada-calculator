@@ -3,79 +3,59 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>币本位开仓</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>开平仓计算器</title>
     <style>
-        html,
         body {
+            font-family: "宋体", "SimSun", serif;
             margin: 0;
-            padding: 0;
-            height: 100vh;
-            overflow: hidden;
-            font-family: "宋体", "SimSun", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            color: #000000;
-        }
-
-        body {
+            padding: 20px;
             display: flex;
             justify-content: center;
         }
 
         .calculator {
-            background: #ffffff;
-            width: 80vw;
-            max-width: 400px;
-            min-width: 280px;
-            padding: 15px 30px 60px;
-            border-radius: 12px;
-            box-shadow: 0 0 15px #a0a9bfbf;
-            overflow-y: auto;
-            max-height: 100vh;
-            box-sizing: border-box;
+            background: white;
+            width: 360px;
+            padding: 20px 25px 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px #a0a9bf88;
         }
 
         h1 {
-            text-align: center;
-            margin-top: 10px;
-            margin-bottom: 15px;
-            font-weight: 900;
-            font-size: 28px;
-            color: #000000; /* 黑色标题 */
-            text-shadow: none;
-            font-family: "微软雅黑", "Microsoft YaHei", "SimSun", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0 0 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            color: #000;
         }
 
-        label {
-            display: block;
-            margin-bottom: 6px;
-            margin-top: 15px;
-            font-weight: 600;
-            color: #000000;
-            font-family: "宋体", "SimSun", serif;
-        }
-
-        input,
-        select {
+        select,
+        input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 8px 10px;
+            font-size: 16px;
+            margin-top: 8px;
             border-radius: 6px;
             border: 1.5px solid #b2d8b2;
-            font-size: 16px;
-            background: #fefefe;
-            color: #000000;
             box-sizing: border-box;
-            transition: border-color 0.3s ease, color 0.3s ease;
             font-family: "Times New Roman", Times, serif;
         }
 
-        input:focus,
-        select:focus {
-            outline: none;
+        label {
+            margin-top: 15px;
+            font-weight: 600;
         }
 
-        .result-value {
-            font-weight: 700;
+        .position-long {
+            background-color: #d0f0d0 !important;
+            color: #004400 !important;
+        }
+
+        .position-short {
+            background-color: #f9d6d5 !important;
+            color: #660000 !important;
         }
 
         button {
@@ -96,137 +76,158 @@
         button:hover {
             background: #246b45;
         }
-
-        #result {
-            display: none;
-        }
-
-        .green-text {
-            color: #007500;
-        }
-
-        .red-text {
-            color: #d00000;
-        }
-
-        .yellow-bg {
-            background-color: #fffca2;
-        }
-
-        .position-long {
-            background-color: #d8f8d8;
-            border-color: #2e8b57 !important;
-        }
-
-        .position-short {
-            background-color: #fce5e5;
-            border-color: #d00000 !important;
-        }
-
-        select {
-            font-family: "宋体", "SimSun", serif;
-        }
     </style>
 </head>
 
 <body>
     <div class="calculator">
-        <h1>币本位开仓</h1>
+        <h1>
+            开平仓计算器
+            <select id="marketSelect" onchange="switchMarket()">
+                <option value="coin">币本位合约</option>
+                <option value="usd">U本位合约</option>
+                <option value="forex">外汇市场</option>
+            </select>
+        </h1>
 
         <label for="positionType">仓位方向</label>
         <select id="positionType" onchange="updatePositionStyle()">
-            <option value="long">多头</option>
-            <option value="short">空头</option>
+            <option value="long">多头 / 买入</option>
+            <option value="short">空头 / 卖出</option>
         </select>
 
-        <label for="entryPrice">开仓价格 (USD)</label>
-        <input type="number" id="entryPrice" min="0" step="any" />
+        <div id="fieldEntryPrice">
+            <label for="entryPrice">开仓价格</label>
+            <input type="number" id="entryPrice" min="0" step="any" />
+        </div>
 
-        <label for="latestPrice">平仓价格 (USD)</label>
-        <input type="number" id="latestPrice" min="0" step="any" />
+        <div id="fieldLatestPrice">
+            <label for="latestPrice">平仓价格</label>
+            <input type="number" id="latestPrice" min="0" step="any" />
+        </div>
 
-        <label for="pnlAmount">盈亏数目 (ADA)</label>
-        <input type="number" id="pnlAmount" step="any" />
+        <div id="fieldPnlAmount">
+            <label for="pnlAmount">盈亏金额</label>
+            <input type="number" id="pnlAmount" step="any" />
+        </div>
 
-        <label for="contractSize">合约面值 (USD)</label>
-        <input type="number" id="contractSize" min="0" step="any" value="10" />
+        <div id="fieldContractSize" style="display:none;">
+            <label for="contractSize">合约面值 (币本位专用)</label>
+            <input type="number" id="contractSize" min="0" step="any" value="10" />
+        </div>
 
-        <label for="contracts">合约张数</label>
-        <input type="number" id="contracts" min="0" step="any" />
+        <div id="fieldContracts">
+            <label for="contracts">合约张数 / 开仓数</label>
+            <input type="number" id="contracts" min="0" step="any" />
+        </div>
 
         <button onclick="calculatePnL()">计算盈亏/张数</button>
-
-        <div id="result"></div>
     </div>
 
     <script>
-        const positionSelect = document.getElementById("positionType");
+        function switchMarket() {
+            const market = document.getElementById('marketSelect').value;
+            document.getElementById('fieldContractSize').style.display = (market === 'coin') ? 'block' : 'none';
 
-        function clearResultStyles() {
-            const contractsInput = document.getElementById('contracts');
-            const pnlAmountInput = document.getElementById('pnlAmount');
-            contractsInput.classList.remove('result-value', 'yellow-bg');
-            pnlAmountInput.classList.remove('result-value', 'green-text', 'red-text');
+            const pnlLabel = document.querySelector('#fieldPnlAmount label');
+            if (market === 'coin') {
+                pnlLabel.textContent = "盈亏数目 (如 ADA)";
+            } else if (market === 'usd') {
+                pnlLabel.textContent = "盈亏金额 (USD)";
+            } else {
+                pnlLabel.textContent = "盈亏金额 (基础货币)";
+            }
+
+            const contractsLabel = document.querySelector('#fieldContracts label');
+            if (market === 'coin') {
+                contractsLabel.textContent = "合约张数";
+
+            } else {
+                contractsLabel.textContent = "开仓数";
+            }
+
+            ['entryPrice', 'latestPrice', 'pnlAmount', 'contracts'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+
+            if (market === 'coin') {
+                document.getElementById('contractSize').value = '10';
+            }
+
+            updatePositionStyle();
         }
 
         function updatePositionStyle() {
             const select = document.getElementById('positionType');
+            select.classList.remove('position-long', 'position-short');
             if (select.value === 'long') {
-                select.classList.remove('position-short');
                 select.classList.add('position-long');
             } else {
-                select.classList.remove('position-long');
                 select.classList.add('position-short');
             }
         }
 
         function calculatePnL() {
-            clearResultStyles();
+            const market = document.getElementById('marketSelect').value;
+            const positionType = document.getElementById('positionType').value;
             const entryPrice = parseFloat(document.getElementById('entryPrice').value);
             const latestPrice = parseFloat(document.getElementById('latestPrice').value);
+            const pnlInput = document.getElementById('pnlAmount');
             const contractsInput = document.getElementById('contracts');
-            const pnlAmountInput = document.getElementById('pnlAmount');
-            const contractSize = parseFloat(document.getElementById('contractSize').value);
-            const positionType = document.getElementById('positionType').value;
 
-            if (!entryPrice || entryPrice <= 0 || !latestPrice || latestPrice <= 0 || !contractSize || contractSize <= 0) {
-                alert("请填写所有有效数字（开仓价、平仓价、合约面值）！");
+            if (!entryPrice || entryPrice <= 0 || !latestPrice || latestPrice <= 0) {
+                alert("请填写有效的开仓和平仓价格！");
                 return;
             }
 
-            const usdPositionSign = positionType === 'long' ? 1 : -1;
-            const pnlAmount = parseFloat(pnlAmountInput.value);
+            const positionSign = (positionType === 'long') ? 1 : -1;
 
-            if (pnlAmountInput.value !== "" && !isNaN(pnlAmount)) {
-                const denominator = (1 / entryPrice - 1 / latestPrice) * contractSize * usdPositionSign;
-                if (denominator === 0) {
-                    alert("平仓价格和开仓价格导致除零错误，无法计算。");
-                    return;
+            if (pnlInput.value !== "" && !isNaN(parseFloat(pnlInput.value))) {
+                const pnl = parseFloat(pnlInput.value);
+                let contracts;
+                if (market === 'coin') {
+                    const contractSize = parseFloat(document.getElementById('contractSize').value);
+                    if (!contractSize || contractSize <= 0) {
+                        alert("请填写有效的合约面值！");
+                        return;
+                    }
+                    const denominator = (1 / entryPrice - 1 / latestPrice) * contractSize * positionSign;
+                    if (denominator === 0) {
+                        alert("价格设置错误，除数为零！");
+                        return;
+                    }
+                    contracts = pnl / denominator;
+                } else {
+                    contracts = pnl / ((latestPrice - entryPrice) * positionSign);
                 }
-                const contracts = pnlAmount / denominator;
                 if (contracts < 0) {
-                    alert("计算得到的合约张数为负数，请检查输入参数。");
+                    alert("计算结果为负数，请检查输入参数！");
                     return;
                 }
                 contractsInput.value = Math.round(contracts);
-                contractsInput.classList.add('result-value', 'yellow-bg');
-                return;
+                contractsInput.classList.add('result-value');
+                pnlInput.classList.remove('result-value');
+            } else {
+                const contracts = parseFloat(contractsInput.value);
+                if (!contracts || contracts <= 0) {
+                    alert("请填写有效的开仓数！");
+                    return;
+                }
+                let pnl;
+                if (market === 'coin') {
+                    const contractSize = parseFloat(document.getElementById('contractSize').value);
+                    pnl = (1 / entryPrice - 1 / latestPrice) * contracts * contractSize * positionSign;
+                } else {
+                    pnl = (latestPrice - entryPrice) * contracts * positionSign;
+                }
+                pnlInput.value = pnl.toFixed(4);
+                pnlInput.classList.add('result-value');
+                contractsInput.classList.remove('result-value');
             }
-
-            const contracts = parseFloat(contractsInput.value);
-            if (!contracts || contracts <= 0) {
-                alert("请填写有效的合约张数或盈亏数目！");
-                return;
-            }
-
-            const usdPosition = contracts * contractSize * usdPositionSign;
-            const pnl = (1 / entryPrice - 1 / latestPrice) * usdPosition;
-
-            pnlAmountInput.value = pnl.toFixed(4);
-            pnlAmountInput.classList.add('result-value');
-            pnlAmountInput.classList.add(pnl >= 0 ? 'green-text' : 'red-text');
         }
 
+        // 初始化
+        switchMarket();
         updatePositionStyle();
     </script>
 </body>
