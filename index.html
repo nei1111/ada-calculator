@@ -24,11 +24,29 @@
 
         h1 {
             margin: 0 0 15px;
+            font-weight: 700;
+            font-size: 24px;
+        }
+
+        .title-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-weight: 700;
-            color: #000;
+            gap: 10px;
+        }
+
+        #titleText {
+            white-space: nowrap;
+            font-size: 24px;
+            color: #27ae60;
+        }
+
+        #marketSelect {
+            flex-grow: 1;
+            padding: 6px 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1.5px solid #b2d8b2;
         }
 
         select,
@@ -76,16 +94,33 @@
         button:hover {
             background: #246b45;
         }
+
+        /* 盈亏比和止盈价同一行 */
+        #fieldProfitRatio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        #fieldProfitRatio>div {
+            flex: 1;
+        }
+
+        #takeProfitPrice {
+            background: #eee;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
 <body>
     <div class="calculator">
-        <h1>
-            开平仓计算器
+        <h1 class="title-bar">
+            <span id="titleText">U本位</span>
             <select id="marketSelect" onchange="switchMarket()">
                 <option value="coin">币本位合约</option>
-                <option value="usd">U本位合约</option>
+                <option value="usd" selected>U本位合约</option>
                 <option value="forex">外汇市场</option>
             </select>
         </h1>
@@ -106,9 +141,22 @@
             <input type="number" id="latestPrice" min="0" step="any" />
         </div>
 
+        <!-- 盈亏比 和 止盈价同一行 -->
+        <div id="fieldProfitRatio">
+            <div>
+                <label for="profitRatio">盈亏比</label>
+                <input type="number" id="profitRatio" step="any" placeholder="输入盈亏比，计算止盈价" />
+            </div>
+            <div>
+                <label for="takeProfitPrice">止盈价</label>
+                <input type="text" id="takeProfitPrice" readonly />
+            </div>
+        </div>
+
         <div id="fieldPnlAmount">
             <label for="pnlAmount">盈亏金额</label>
-            <input type="number" id="pnlAmount" step="any" />
+            <!-- 这里类型改成 text，支持显示正负号和颜色 -->
+            <input type="text" id="pnlAmount" />
         </div>
 
         <div id="fieldContractSize" style="display:none;">
@@ -121,38 +169,39 @@
             <input type="number" id="contracts" min="0" step="any" />
         </div>
 
-        <button onclick="calculatePnL()">计算盈亏/张数</button>
+        <button onclick="calculatePnL()">计算盈亏/仓位</button>
     </div>
 
     <script>
         function switchMarket() {
             const market = document.getElementById('marketSelect').value;
+            const titleSpan = document.getElementById('titleText');
+            if (market === 'coin') {
+                titleSpan.textContent = "币本位";
+                titleSpan.style.color = "#f1c40f";
+            } else if (market === 'usd') {
+                titleSpan.textContent = "U本位";
+                titleSpan.style.color = "#27ae60";
+            } else {
+                titleSpan.textContent = "外汇";
+                titleSpan.style.color = "#2980b9";
+            }
+
             document.getElementById('fieldContractSize').style.display = (market === 'coin') ? 'block' : 'none';
 
             const pnlLabel = document.querySelector('#fieldPnlAmount label');
-            if (market === 'coin') {
-                pnlLabel.textContent = "盈亏数目 (如 ADA)";
-            } else if (market === 'usd') {
-                pnlLabel.textContent = "盈亏金额 (USD)";
-            } else {
-                pnlLabel.textContent = "盈亏金额 (基础货币)";
-            }
+            pnlLabel.textContent = market === 'coin' ? "盈亏数目 (如 ADA)" :
+                market === 'usd' ? "盈亏金额 (USD)" : "盈亏金额 (基础货币)";
 
             const contractsLabel = document.querySelector('#fieldContracts label');
-            if (market === 'coin') {
-                contractsLabel.textContent = "合约张数";
+            contractsLabel.textContent = market === 'coin' ? "合约张数" : "开仓数";
 
-            } else {
-                contractsLabel.textContent = "开仓数";
-            }
-
-            ['entryPrice', 'latestPrice', 'pnlAmount', 'contracts'].forEach(id => {
+            ['entryPrice', 'latestPrice', 'pnlAmount', 'contracts', 'profitRatio'].forEach(id => {
                 document.getElementById(id).value = '';
             });
 
-            if (market === 'coin') {
-                document.getElementById('contractSize').value = '10';
-            }
+            // 清空止盈价
+            document.getElementById('takeProfitPrice').value = '';
 
             updatePositionStyle();
         }
@@ -166,6 +215,57 @@
                 select.classList.add('position-short');
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const profitRatioInput = document.getElementById('profitRatio');
+            const takeProfitPriceInput = document.getElementById('takeProfitPrice');
+
+            profitRatioInput.addEventListener('input', () => {
+                const inputValue = profitRatioInput.value.trim();
+
+                if (inputValue === '') {
+                    takeProfitPriceInput.value = '';
+                    return;
+                }
+
+                let userProfitRatio = parseFloat(inputValue);
+                if (isNaN(userProfitRatio) || userProfitRatio <= 0) {
+                    takeProfitPriceInput.value = '';
+                    return;
+                }
+
+                const entryPrice = parseFloat(document.getElementById('entryPrice').value);
+                const latestPrice = parseFloat(document.getElementById('latestPrice').value);
+                const positionType = document.getElementById('positionType').value;
+
+                if (!entryPrice || entryPrice <= 0 || !latestPrice || latestPrice <= 0) {
+                    takeProfitPriceInput.value = '';
+                    return;
+                }
+
+                let lossPct;
+                if (positionType === 'long') {
+                    lossPct = Math.abs((entryPrice - latestPrice) / entryPrice);
+                } else {
+                    lossPct = Math.abs((latestPrice - entryPrice) / entryPrice);
+                }
+                if (lossPct === 0) {
+                    takeProfitPriceInput.value = '';
+                    return;
+                }
+
+                let profitPct = userProfitRatio * lossPct;
+
+                let takeProfitPrice;
+                if (positionType === 'long') {
+                    takeProfitPrice = entryPrice * (1 + profitPct);
+                } else {
+                    takeProfitPrice = entryPrice * (1 - profitPct);
+                }
+
+                takeProfitPriceInput.value = takeProfitPrice.toFixed(4);
+            });
+        });
 
         function calculatePnL() {
             const market = document.getElementById('marketSelect').value;
@@ -205,8 +305,6 @@
                     return;
                 }
                 contractsInput.value = Math.round(contracts);
-                contractsInput.classList.add('result-value');
-                pnlInput.classList.remove('result-value');
             } else {
                 const contracts = parseFloat(contractsInput.value);
                 if (!contracts || contracts <= 0) {
@@ -220,13 +318,20 @@
                 } else {
                     pnl = (latestPrice - entryPrice) * contracts * positionSign;
                 }
-                pnlInput.value = pnl.toFixed(4);
-                pnlInput.classList.add('result-value');
-                contractsInput.classList.remove('result-value');
+                // 根据盈亏金额设置带符号的显示和颜色
+                if (pnl > 0) {
+                    pnlInput.value = "+" + pnl.toFixed(4);
+                    pnlInput.style.color = "green";
+                } else if (pnl < 0) {
+                    pnlInput.value = pnl.toFixed(4); // 负号自动带上
+                    pnlInput.style.color = "red";
+                } else {
+                    pnlInput.value = "0";
+                    pnlInput.style.color = "black";
+                }
             }
         }
 
-        // 初始化
         switchMarket();
         updatePositionStyle();
     </script>
