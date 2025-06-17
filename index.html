@@ -64,6 +64,7 @@
         label {
             margin-top: 15px;
             font-weight: 600;
+            display: block;
         }
 
         .position-long {
@@ -111,6 +112,31 @@
             background: #eee;
             cursor: not-allowed;
         }
+
+        /* 新增另一货币计价开仓数样式 */
+        #fieldContractsAlt {
+            margin-top: 15px;
+        }
+
+        #contractsAlt {
+            background: #eee;
+            cursor: not-allowed;
+        }
+
+        /* 外汇市场时，“开仓数”和“另一货币计价开仓数”容器横排显示 */
+        #fieldContractsWrapper {
+            display: none;
+            margin-top: 15px;
+            gap: 20px;
+        }
+
+        #fieldContractsWrapper.flex-row {
+            display: flex;
+        }
+
+        #fieldContractsWrapper>div {
+            flex: 1;
+        }
     </style>
 </head>
 
@@ -145,7 +171,7 @@
         <div id="fieldProfitRatio">
             <div>
                 <label for="profitRatio">盈亏比</label>
-                <input type="number" id="profitRatio" step="any" placeholder="输入盈亏比" />
+                <input type="number" id="profitRatio" step="any" placeholder="输入盈亏比，计算止盈价" />
             </div>
             <div>
                 <label for="takeProfitPrice">止盈价</label>
@@ -155,7 +181,6 @@
 
         <div id="fieldPnlAmount">
             <label for="pnlAmount">盈亏金额</label>
-            <!-- 这里类型改成 text，支持显示正负号和颜色 -->
             <input type="text" id="pnlAmount" />
         </div>
 
@@ -164,9 +189,22 @@
             <input type="number" id="contractSize" min="0" step="any" value="10" />
         </div>
 
-        <div id="fieldContracts">
-            <label for="contracts">合约张数 / 开仓数</label>
-            <input type="number" id="contracts" min="0" step="any" />
+        <!-- 新增：外汇界面“开仓数”和“另一货币计价开仓数”横排容器 -->
+        <div id="fieldContractsWrapper">
+            <div>
+                <label for="contracts">基准货币</label>
+                <input type="number" id="contracts" min="0" step="any" />
+            </div>
+            <div>
+                <label for="contractsAlt">报价货币</label>
+                <input type="text" id="contractsAlt" readonly />
+            </div>
+        </div>
+
+        <!-- 币本位和U本位合约的“开仓数”单独显示 -->
+        <div id="fieldContractsSingle">
+            <label for="contractsSingle">合约张数 / 开仓数</label>
+            <input type="number" id="contractsSingleInput" min="0" step="any" />
         </div>
 
         <button onclick="calculatePnL()">计算盈亏/仓位</button>
@@ -176,32 +214,60 @@
         function switchMarket() {
             const market = document.getElementById('marketSelect').value;
             const titleSpan = document.getElementById('titleText');
+
+            const fieldContractSize = document.getElementById('fieldContractSize');
+            const pnlLabel = document.querySelector('#fieldPnlAmount label');
+
+            const fieldContractsWrapper = document.getElementById('fieldContractsWrapper');
+            const fieldContractsSingle = document.getElementById('fieldContractsSingle');
+
+            // 先隐藏所有合同数相关区域
+            fieldContractsWrapper.classList.remove('flex-row');
+            fieldContractsWrapper.style.display = 'none';
+            fieldContractsSingle.style.display = 'none';
+
             if (market === 'coin') {
                 titleSpan.textContent = "币本位";
                 titleSpan.style.color = "#f1c40f";
+
+                fieldContractSize.style.display = 'block';
+                pnlLabel.textContent = "盈亏数目 (如 ADA)";
+
+                // 币本位合约，显示单独“开仓数”
+                fieldContractsSingle.style.display = 'block';
+                document.querySelector('#fieldContractsSingle label').textContent = "合约张数";
+                document.getElementById('contractsSingleInput').value = '';
             } else if (market === 'usd') {
                 titleSpan.textContent = "U本位";
                 titleSpan.style.color = "#27ae60";
+
+                fieldContractSize.style.display = 'none';
+                pnlLabel.textContent = "盈亏金额 (USD)";
+
+                // U本位合约，显示单独“开仓数”
+                fieldContractsSingle.style.display = 'block';
+                document.querySelector('#fieldContractsSingle label').textContent = "开仓数";
+                document.getElementById('contractsSingleInput').value = '';
             } else {
                 titleSpan.textContent = "外汇";
                 titleSpan.style.color = "#2980b9";
+
+                fieldContractSize.style.display = 'none';
+                pnlLabel.textContent = "盈亏金额 (基础货币)";
+
+                // 外汇市场，显示横排“基准货币”和“报价货币”
+                fieldContractsWrapper.style.display = 'flex';
+                fieldContractsWrapper.classList.add('flex-row');
+                // 清空值
+                document.getElementById('contracts').value = '';
+                document.getElementById('contractsAlt').value = '';
             }
 
-            document.getElementById('fieldContractSize').style.display = (market === 'coin') ? 'block' : 'none';
-
-            const pnlLabel = document.querySelector('#fieldPnlAmount label');
-            pnlLabel.textContent = market === 'coin' ? "盈亏数目 (如 ADA)" :
-                market === 'usd' ? "盈亏金额 (USD)" : "盈亏金额 (基础货币)";
-
-            const contractsLabel = document.querySelector('#fieldContracts label');
-            contractsLabel.textContent = market === 'coin' ? "合约张数" : "开仓数";
-
-            ['entryPrice', 'latestPrice', 'pnlAmount', 'contracts', 'profitRatio'].forEach(id => {
-                document.getElementById(id).value = '';
+            // 清空输入框
+            ['entryPrice', 'latestPrice', 'pnlAmount', 'contractsSingleInput', 'contracts', 'contractsAlt', 'profitRatio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
             });
-
-            // 清空止盈价
-            document.getElementById('takeProfitPrice').value = '';
 
             updatePositionStyle();
         }
@@ -273,14 +339,63 @@
             const entryPrice = parseFloat(document.getElementById('entryPrice').value);
             const latestPrice = parseFloat(document.getElementById('latestPrice').value);
             const pnlInput = document.getElementById('pnlAmount');
-            const contractsInput = document.getElementById('contracts');
 
-            if (!entryPrice || entryPrice <= 0 || !latestPrice || latestPrice <= 0) {
-                alert("请填写有效的开仓和平仓价格！");
+            // 分别获取外汇和币本位/U本位对应的开仓输入框
+            const contractsInput = (market === 'forex') ? document.getElementById('contracts') : document.getElementById('contractsSingleInput');
+            const contractsAltInput = document.getElementById('contractsAlt');
+
+            if (!entryPrice || entryPrice <= 0 || (document.getElementById('latestPrice').value !== '' && (!latestPrice || latestPrice <= 0))) {
+                alert("请填写有效的开仓价和（如果有）平仓价！");
                 return;
             }
 
             const positionSign = (positionType === 'long') ? 1 : -1;
+
+            // 当平仓价为空时，尝试用盈亏金额和开仓数反算平仓价
+            if ((document.getElementById('latestPrice').value === '' || latestPrice === 0) && pnlInput.value !== "" && !isNaN(parseFloat(pnlInput.value)) && contractsInput.value !== "" && !isNaN(parseFloat(contractsInput.value))) {
+                const pnl = parseFloat(pnlInput.value);
+                const contracts = parseFloat(contractsInput.value);
+
+                let calculatedLatestPrice;
+                if (market === 'coin') {
+                    const contractSize = parseFloat(document.getElementById('contractSize').value);
+                    if (!contractSize || contractSize <= 0) {
+                        alert("请填写有效的合约面值！");
+                        return;
+                    }
+                    const denominator = contracts * contractSize * positionSign;
+                    if (denominator === 0) {
+                        alert("合约张数或方向有误！");
+                        return;
+                    }
+                    const invLatestPrice = 1 / entryPrice - pnl / denominator;
+                    if (invLatestPrice === 0) {
+                        alert("计算错误，除数为零！");
+                        return;
+                    }
+                    calculatedLatestPrice = 1 / invLatestPrice;
+                } else {
+                    const denominator = contracts * positionSign;
+                    if (denominator === 0) {
+                        alert("开仓数或方向有误！");
+                        return;
+                    }
+                    calculatedLatestPrice = pnl / denominator + entryPrice;
+                }
+
+                if (calculatedLatestPrice <= 0) {
+                    alert("计算得到的平仓价无效！");
+                    return;
+                }
+                document.getElementById('latestPrice').value = calculatedLatestPrice.toFixed(6);
+            }
+
+            const finalLatestPrice = parseFloat(document.getElementById('latestPrice').value);
+
+            if (isNaN(finalLatestPrice) || finalLatestPrice <= 0) {
+                alert("请填写有效的平仓价！");
+                return;
+            }
 
             if (pnlInput.value !== "" && !isNaN(parseFloat(pnlInput.value))) {
                 const pnl = parseFloat(pnlInput.value);
@@ -291,14 +406,14 @@
                         alert("请填写有效的合约面值！");
                         return;
                     }
-                    const denominator = (1 / entryPrice - 1 / latestPrice) * contractSize * positionSign;
+                    const denominator = (1 / entryPrice - 1 / finalLatestPrice) * contractSize * positionSign;
                     if (denominator === 0) {
                         alert("价格设置错误，除数为零！");
                         return;
                     }
                     contracts = pnl / denominator;
                 } else {
-                    contracts = pnl / ((latestPrice - entryPrice) * positionSign);
+                    contracts = pnl / ((finalLatestPrice - entryPrice) * positionSign);
                 }
                 if (contracts < 0) {
                     alert("计算结果为负数，请检查输入参数！");
@@ -314,20 +429,30 @@
                 let pnl;
                 if (market === 'coin') {
                     const contractSize = parseFloat(document.getElementById('contractSize').value);
-                    pnl = (1 / entryPrice - 1 / latestPrice) * contracts * contractSize * positionSign;
+                    pnl = (1 / entryPrice - 1 / finalLatestPrice) * contracts * contractSize * positionSign;
                 } else {
-                    pnl = (latestPrice - entryPrice) * contracts * positionSign;
+                    pnl = (finalLatestPrice - entryPrice) * contracts * positionSign;
                 }
-                // 根据盈亏金额设置带符号的显示和颜色
                 if (pnl > 0) {
                     pnlInput.value = "+" + pnl.toFixed(4);
                     pnlInput.style.color = "green";
                 } else if (pnl < 0) {
-                    pnlInput.value = pnl.toFixed(4); // 负号自动带上
+                    pnlInput.value = pnl.toFixed(4);
                     pnlInput.style.color = "red";
                 } else {
                     pnlInput.value = "0";
                     pnlInput.style.color = "black";
+                }
+            }
+
+            // 外汇市场计算另一货币计价开仓数（用开仓价计算汇率）
+            if (market === 'forex') {
+                const contractsMain = parseFloat(document.getElementById('contracts').value);
+                if (contractsMain && entryPrice && entryPrice > 0) {
+                    const contractsAlt = contractsMain * entryPrice;
+                    document.getElementById('contractsAlt').value = contractsAlt.toFixed(4);
+                } else {
+                    document.getElementById('contractsAlt').value = '';
                 }
             }
         }
